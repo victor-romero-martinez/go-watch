@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	targetFile string
-	configPath string
-	timeout    int
-	verbose    bool
-	delay      int
-	version    string
+	targetFile  string
+	configPath  string
+	timeout     int
+	verbose     bool
+	delay       int
+	showVersion bool
+	version     string
 )
 
 func init() {
@@ -28,7 +29,7 @@ func init() {
 	flag.IntVar(&timeout, "t", 5, "Timeout de ejecución en segundos para evitar bucles infinitos.")
 	flag.BoolVar(&verbose, "v", false, "Habilita la salida detallada (verbose) de logs internos.")
 	flag.IntVar(&delay, "delay", 100, "Retraso de debounce en milisegundos después de la detección de un cambio.")
-	flag.StringVar(&version, "V", "0.0.0", "Retraso de debounce en milisegundos después de la detección de un cambio.")
+	flag.BoolVar(&showVersion, "V", false, "Version del cli.")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Uso: gow -f <archivo>\n")
@@ -40,6 +41,11 @@ func init() {
 
 func main() {
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("Version %s\n", version)
+		return
+	}
 
 	if targetFile == "" {
 		flag.Usage()
