@@ -60,7 +60,7 @@ func TestWatcher_Debounce(t *testing.T) {
 	tmpFile := filepath.Join(t.TempDir(), "main.go")
 	os.WriteFile(tmpFile, []byte("fmt.PrintLn(1)"), 0644)
 
-	w := NewWatcher(mock, cfg, tmpFile, false)
+	w := NewWatcher(mock, cfg, tmpFile, false, 100*time.Millisecond)
 
 	// 2. Simular multiples eventos de guardado rápidos
 	// Enviamos 5 señales de ejecución

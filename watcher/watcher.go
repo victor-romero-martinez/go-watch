@@ -23,12 +23,12 @@ type Watcher struct {
 	commander  runner.Commander
 	config     *config.RunnerConfig
 	targetFile string
-	// Canal para controlar el debounce
-	debounceCh chan struct{}
+	debounceCh chan struct{} // Canal para controlar el debounce
 	verbose    bool
+	delay      time.Duration
 }
 
-func NewWatcher(commander runner.Commander, cfg *config.RunnerConfig, targetFile string, verbose bool) *Watcher {
+func NewWatcher(commander runner.Commander, cfg *config.RunnerConfig, targetFile string, verbose bool, delay time.Duration) *Watcher {
 	return &Watcher{
 		fileHashes: make(map[string]string),
 		commander:  commander,
@@ -36,6 +36,7 @@ func NewWatcher(commander runner.Commander, cfg *config.RunnerConfig, targetFile
 		targetFile: targetFile,
 		debounceCh: make(chan struct{}, 1),
 		verbose:    verbose,
+		delay:      delay,
 	}
 }
 
@@ -99,7 +100,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 
 func (w *Watcher) handleDebounce() {
 	w.log("Iniciando verificación de cambios para %s", w.targetFile)
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(w.delay)
 
 	select {
 	case <-w.debounceCh:
@@ -125,7 +126,7 @@ func (w *Watcher) handleDebounce() {
 		w.log("Hash cambiado: %s", newHash)
 		w.handleExecution()
 	} else {
-		w.log("[INFO] Archivo guardado, pero el contenido no cambió. Ignorando.")
+		w.log("Archivo guardado, pero el contenido no cambió. Ignorando.")
 	}
 }
 

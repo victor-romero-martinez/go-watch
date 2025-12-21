@@ -52,21 +52,25 @@ func main() {
 		os.Exit(1)
 	}
 
+	finalDelay := 100 * time.Millisecond
+
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "t" {
 			cfg.DefaultTimeout = time.Duration(timeout) * time.Second
 		}
+		if f.Name == "delay" {
+			finalDelay = time.Duration(delay) * time.Millisecond
+		}
 	})
-	// TODO: Integrar el flag -delay en el watcher si es diferente al valor por defecto.
 
 	commander := runner.NewOSCommander()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	w := watcher.NewWatcher(commander, cfg, targetFile, verbose)
+	w := watcher.NewWatcher(commander, cfg, targetFile, verbose, finalDelay)
 
-	fmt.Printf("[ OK ] gow iniciado. Vigilando: %s (Timeout: %v).\n", targetFile, cfg.DefaultTimeout)
+	fmt.Printf("[ OK ] gow iniciado. Vigilando: %s (Timeout: %v, Delay: %v).\n", targetFile, cfg.DefaultTimeout, finalDelay)
 
 	if err := w.Run(ctx); err != nil {
 		if err != context.Canceled {
