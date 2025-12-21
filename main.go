@@ -70,7 +70,7 @@ func main() {
 
 	w := watcher.NewWatcher(commander, cfg, targetFile, verbose, finalDelay)
 
-	fmt.Printf("[ OK ] gow iniciado. Vigilando: %s (Timeout: %v, Delay: %v).\n", targetFile, cfg.DefaultTimeout, finalDelay)
+	fmt.Printf("[INIT] gow iniciado. Vigilando: %s (Timeout: %v, Delay: %v).\n", targetFile, cfg.DefaultTimeout, finalDelay)
 
 	if err := w.Run(ctx); err != nil {
 		if err != context.Canceled {

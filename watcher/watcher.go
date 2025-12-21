@@ -18,14 +18,15 @@ import (
 
 type Watcher struct {
 	// Mutex para proteger el acceso concurrente al mapa de hashes
-	mu         sync.Mutex
-	fileHashes map[string]string
-	commander  runner.Commander
-	config     *config.RunnerConfig
-	targetFile string
-	debounceCh chan struct{} // Canal para controlar el debounce
-	verbose    bool
-	delay      time.Duration
+	mu            sync.Mutex
+	fileHashes    map[string]string
+	commander     runner.Commander
+	config        *config.RunnerConfig
+	targetFile    string
+	debounceCh    chan struct{} // Canal para controlar el debounce
+	verbose       bool
+	delay         time.Duration
+	cancelCurrent context.CancelFunc
 }
 
 func NewWatcher(commander runner.Commander, cfg *config.RunnerConfig, targetFile string, verbose bool, delay time.Duration) *Watcher {
@@ -69,9 +70,12 @@ func (w *Watcher) Run(ctx context.Context) error {
 		return fmt.Errorf("Error al vigilar el directorio %s: %w", dir, err)
 	}
 
-	w.updateHash(w.targetFile)
+	h, _ := w.updateHash(w.targetFile)
+	w.mu.Lock()
+	w.fileHashes[w.targetFile] = h
+	w.mu.Unlock()
 
-	go w.handleExecution()
+	w.handleExecution()
 
 	for {
 		select {
@@ -109,21 +113,24 @@ func (w *Watcher) handleDebounce() {
 		// No hay mas eventos pendientes, podemos ejecutar.
 	}
 
-	w.mu.Lock()
-	defer w.mu.Unlock()
-
 	newHash, err := w.updateHash(w.targetFile)
 	if err != nil {
 		fmt.Printf("Error al calcular hash: %v\n", err)
 		return
 	}
 
-	oldHash, exists := w.fileHashes[w.targetFile]
+	w.mu.Lock()
+	oldHash := w.fileHashes[w.targetFile]
+	isDifferent := newHash != oldHash
 
-	if !exists || newHash != oldHash {
-		fmt.Printf("[DONE] Archivo modificado. Ejecutando %s...\n", w.targetFile)
+	if isDifferent {
 		w.fileHashes[w.targetFile] = newHash
-		w.log("Hash cambiado: %s", newHash)
+	}
+	w.mu.Unlock()
+
+	// 3. Ejecutar fuera del Lock para evitar Deadlock
+	if isDifferent {
+		fmt.Printf("[DONE] Archivo modificado. Ejecutando %s...\n", w.targetFile)
 		w.handleExecution()
 	} else {
 		w.log("Archivo guardado, pero el contenido no cambió. Ignorando.")
@@ -135,24 +142,38 @@ func (w *Watcher) updateHash(filepath string) (string, error) {
 }
 
 func (w *Watcher) handleExecution() {
-	ext := filepath.Ext(w.targetFile)
-	var rule *config.Rule
+	// 1. CANCELAR PROCESO ANTERIOR (Si existe)
+	w.mu.Lock()
+	if w.cancelCurrent != nil {
+		w.log("Cancelando ejecución anterior...")
+		w.cancelCurrent()
+	}
 
-	for i, r := range w.config.Rules {
+	// Crear un contexto con el timeout de la configuración
+	ctx, cancel := context.WithTimeout(context.Background(), w.config.DefaultTimeout)
+	w.cancelCurrent = cancel
+	w.mu.Unlock()
+
+	// 2. BUSCAR REGLA
+	ext := filepath.Ext(w.targetFile)
+	var rule config.Rule
+	found := false
+	for _, r := range w.config.Rules {
 		if r.Extension == ext {
-			rule = &w.config.Rules[i]
+			rule = r
+			found = true
 			break
 		}
 	}
 
-	if rule == nil {
+	if !found {
 		fmt.Printf("[WARN] No se encontró regla para la extensión %s\n", ext)
+		cancel()
 		return
 	}
 
-	cmd := rule.ExecutionCommand
+	// 3. PREPARAR ARGUMENTOS
 	args := make([]string, len(rule.ExecutionArgs))
-
 	// Sustituir $FILE por el path real
 	for i, arg := range rule.ExecutionArgs {
 		if arg == "$FILE" {
@@ -162,21 +183,27 @@ func (w *Watcher) handleExecution() {
 		}
 	}
 
-	// Crear un contexto con el timeout de la configuración
-	ctx, cancel := context.WithTimeout(context.Background(), w.config.DefaultTimeout)
-	defer cancel()
+	// 4. EJECUTAR EN SEGUNDO PLANO (Goroutine)
+	go func(c context.Context, fCancel context.CancelFunc, r config.Rule, a []string) {
+		defer fCancel()
 
-	err := w.commander.Run(ctx, cmd, args)
+		// El Commander.Run debería imprimir directamente a os.Stdout
+		err := w.commander.Run(c, r.ExecutionCommand, a)
 
-	if err != nil {
-		if ctx.Err() == context.DeadlineExceeded {
-			fmt.Printf("[ERR ] EJECUCIÓN FALLIDA: Timeout de %v alcanzado.\n", w.config.DefaultTimeout)
+		if err != nil {
+			if c.Err() == context.DeadlineExceeded {
+				fmt.Printf("[ERR ] Timeout alcanzado.\n")
+			} else if c.Err() == context.Canceled {
+				w.log("Proceso cancelado por nuevo cambio.")
+			} else {
+				fmt.Printf("[ERR ] Ejecución fallida: %v\n", err)
+			}
 		} else {
-			fmt.Printf("[ERR ] EJECUCIÓN FALLIDA: %v\n", err)
+			if c.Err() == nil {
+				fmt.Println("[ OK ] Ejecución completada.")
+			}
 		}
-	} else {
-		fmt.Println("[ OK ] Ejecución completada.")
-	}
+	}(ctx, cancel, rule, args)
 }
 
 func (w *Watcher) log(format string, v ...interface{}) {

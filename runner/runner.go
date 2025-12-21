@@ -21,8 +21,10 @@ func NewOSCommander() *OSCommander {
 
 func (o *OSCommander) Run(ctx context.Context, command string, args []string) error {
 	cmd := exec.CommandContext(ctx, command, args...)
+
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
 
 	return cmd.Run()
 }
