@@ -1,0 +1,34 @@
+{
+    "default_timeout_ms": 5000,
+    "rules": [
+        {
+            "extension": ".go",
+            "name": "Golang Runner",
+            "execution_command": "go",
+            "execution_args": [
+                "run",
+                "$FILE"
+            ],
+            "needs_build": false
+        },
+        {
+            "extension": ".js",
+            "name": "Node.js Runner",
+            "execution_command": "node",
+            "execution_args": [
+                "$FILE"
+            ],
+            "needs_build": false
+        },
+        {
+            "extension": ".rs",
+            "name": "Rust Runner (Requires Build)",
+            "execution_command": "/bin/sh",
+            "execution_args": [
+                "-c",
+                "rustc $FILE -o /tmp/gow_bin && /tmp/gow_bin"
+            ],
+            "needs_build": true
+        }
+    ]
+}
