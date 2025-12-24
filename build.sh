@@ -3,7 +3,7 @@
 # --- CONFIGURACIÓN ---
 mkdir -p builds
 PACKAGE_NAME="gow"
-VERSION="0.0.1"
+VERSION="0.0.2"
 
 echo "Building MMP binaries (Version: $VERSION) for multiple platforms..."
 
