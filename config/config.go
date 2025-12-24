@@ -86,3 +86,27 @@ func LoadConfig(path string) (*RunnerConfig, error) {
 
 	return cfg, nil
 }
+
+func SaveConfig(path string, cfg *RunnerConfig) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Esto evita que el JSON se llene de ceros (nanosegundos)
+	aux := struct {
+		DefaultTimeoutMS int64  `json:"default_timeout_ms"`
+		Rules            []Rule `json:"rules"`
+	}{
+		// Convertimos el tiempo de Go de nuevo a milisegundos simples
+		DefaultTimeoutMS: int64(cfg.DefaultTimeout / time.Millisecond),
+		Rules:            cfg.Rules,
+	}
+
+	enc := json.NewEncoder(file)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "\t")
+
+	return enc.Encode(aux)
+}
