@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -176,12 +177,10 @@ func (w *Watcher) handleExecution() {
 	args := make([]string, len(rule.ExecutionArgs))
 	// Sustituir $FILE por el path real
 	for i, arg := range rule.ExecutionArgs {
-		if arg == "$FILE" {
-			args[i] = w.targetFile
-		} else {
-			args[i] = arg
-		}
+		args[i] = strings.ReplaceAll(arg, "$FILE", w.targetFile)
 	}
+
+	w.log("Argumentos %v", args)
 
 	// 4. EJECUTAR EN SEGUNDO PLANO (Goroutine)
 	go func(c context.Context, fCancel context.CancelFunc, r config.Rule, a []string) {
