@@ -21,13 +21,13 @@ A diferencia de otros *watchers*, **go-watch no está atado a un runtime**: pued
 ## 📦 Instalación
 
 ```bash
-go install github.com/tu-usuario/go-watch@latest
+go install https://github.com/victor-romero-martinez/go-watch@latest
 ```
 
 O clonando el repositorio:
 
 ```bash
-git clone https://github.com/tu-usuario/go-watch.git
+git clone https://github.com/victor-romero-martinez/go-watch.git
 cd go-watch
 go build -o gow
 ```
