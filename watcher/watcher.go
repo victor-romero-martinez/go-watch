@@ -132,6 +132,7 @@ func (w *Watcher) handleDebounce() {
 	// 3. Ejecutar fuera del Lock para evitar Deadlock
 	if isDifferent {
 		fmt.Printf("[DONE] Archivo modificado. Ejecutando %s...\n", w.targetFile)
+		w.log("Nuevo hash: %s", newHash)
 		w.handleExecution()
 	} else {
 		w.log("Archivo guardado, pero el contenido no cambió. Ignorando.")
@@ -180,7 +181,7 @@ func (w *Watcher) handleExecution() {
 		args[i] = strings.ReplaceAll(arg, "$FILE", w.targetFile)
 	}
 
-	w.log("Argumentos %v", args)
+	w.log("Comando: %s argumentos: %v", rule.ExecutionCommand, args)
 
 	// 4. EJECUTAR EN SEGUNDO PLANO (Goroutine)
 	go func(c context.Context, fCancel context.CancelFunc, r config.Rule, a []string) {
