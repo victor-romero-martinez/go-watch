@@ -122,7 +122,7 @@ Esto permite ejecutar **lenguajes compilados o interpretados** sin modificar el 
 También podés agregar reglas dinámicamente:
 
 ```bash
-gow -a ".py;Python Runner;python;$FILE"
+gow -a ".py;Python Runner;python;\$FILE"
 ```
 
 Formato:
