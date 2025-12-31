@@ -208,6 +208,6 @@ func (w *Watcher) handleExecution() {
 
 func (w *Watcher) log(format string, v ...interface{}) {
 	if w.verbose {
-		fmt.Printf("[DEBUG] "+format+"\n", v...)
+		fmt.Printf("[LOG ] "+format+"\n", v...)
 	}
 }
